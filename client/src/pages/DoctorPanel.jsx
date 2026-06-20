@@ -10,6 +10,7 @@ import {
   FaFilePrescription, FaUtensils, FaUserFriends, FaChevronRight,
   FaTrash
 } from 'react-icons/fa'
+import { HiMenu } from 'react-icons/hi'
 import {
   ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip
 } from 'recharts'
@@ -41,6 +42,7 @@ export default function DoctorPanel() {
   const { dark } = useTheme()
   const [activeTab, setActiveTab] = useState('patients') // 'patients' or 'alerts'
   const [alertsSubTab, setAlertsSubTab] = useState('all') // 'all', 'critical', 'warning'
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   
   // Dashboard & List State
   const [stats, setStats] = useState({ patients: 0, records: 0, recordsLast7Days: 0 })
@@ -283,21 +285,30 @@ export default function DoctorPanel() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: dark ? '#0c0b0f' : '#f1ede6', fontFamily: 'var(--font-sans)' }}>
+    <div className="doctor-layout" style={{ display: 'flex', minHeight: '100vh', background: dark ? '#0c0b0f' : '#f1ede6', fontFamily: 'var(--font-sans)' }}>
+      {/* Sidebar overlay backdrop for mobile */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setSidebarOpen(false)} 
+        />
+      )}
       
       {/* ── Sidebar ─────────────────────── */}
-      <aside style={{
-        width: 240,
-        background: '#111827', // Dark medical panel sidebar
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-        position: 'sticky',
-        top: 0,
-        height: '100vh',
-        overflowY: 'auto',
-        zIndex: 50,
-      }}>
+      <aside 
+        className={`doctor-sidebar ${sidebarOpen ? 'open' : ''}`}
+        style={{
+          width: 240,
+          background: '#111827', // Dark medical panel sidebar
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          overflowY: 'auto',
+          zIndex: 50,
+        }}>
         {/* Brand Header */}
         <div style={{ padding: '1.5rem 1.25rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -312,7 +323,7 @@ export default function DoctorPanel() {
         {/* Sidebar Nav */}
         <nav style={{ flex: 1, padding: '1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           <button
-            onClick={() => { setSelectedPatientId(null); setActiveTab('patients'); }}
+            onClick={() => { setSelectedPatientId(null); setActiveTab('patients'); setSidebarOpen(false); }}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.65rem',
               padding: '0.7rem 0.875rem', borderRadius: '10px',
@@ -330,7 +341,7 @@ export default function DoctorPanel() {
           </button>
 
           <button
-            onClick={() => { setSelectedPatientId(null); setActiveTab('alerts'); }}
+            onClick={() => { setSelectedPatientId(null); setActiveTab('alerts'); setSidebarOpen(false); }}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '0.7rem 0.875rem', borderRadius: '10px',
@@ -373,19 +384,31 @@ export default function DoctorPanel() {
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         
         {/* Top Header */}
-        <header style={{
-          padding: '1rem 2rem',
-          borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          background: dark ? '#141319' : '#fff',
-        }}>
-          <div>
-            <h1 style={{ fontSize: '1.3rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', margin: 0 }}>
-              {selectedPatientId ? 'Expediente del Paciente' : 'Panel de Control Médico'}
-            </h1>
-            <p style={{ fontSize: '0.75rem', color: dark ? 'rgba(255,255,255,0.4)' : '#a89580', margin: 0 }}>
-              Monitoreo y seguimiento de métricas de salud en Tamaulipas
-            </p>
+        <header 
+          className="doctor-header"
+          style={{
+            padding: '1rem 2rem',
+            borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: dark ? '#141319' : '#fff',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button 
+              className="doctor-menu-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{ display: 'none' }}
+            >
+              <HiMenu />
+            </button>
+            <div>
+              <h1 style={{ fontSize: '1.3rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', margin: 0 }}>
+                {selectedPatientId ? 'Expediente del Paciente' : 'Panel de Control Médico'}
+              </h1>
+              <p style={{ fontSize: '0.75rem', color: dark ? 'rgba(255,255,255,0.4)' : '#a89580', margin: 0 }}>
+                Monitoreo y seguimiento de métricas de salud en Tamaulipas
+              </p>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <select
@@ -593,7 +616,7 @@ export default function DoctorPanel() {
                           <h3 style={{ fontSize: '0.9rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <FaHeartbeat style={{ color: '#0369a1' }} /> Registros Recientes
                           </h3>
-                          <div style={{ overflowX: 'auto', maxHeight: '300px' }}>
+                          <div className="doctor-table-container" style={{ overflowX: 'auto', maxHeight: '300px' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                               <thead>
                                 <tr style={{ background: dark ? '#1e1c25' : '#faf8f5', borderBottom: `1px solid ${dark ? '#272530' : '#e8ddd0'}` }}>
@@ -789,7 +812,7 @@ export default function DoctorPanel() {
                             <h3 style={{ fontSize: '0.9rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                               <FaHeartbeat style={{ color: '#0369a1' }} /> Registros Recientes de {member.name}
                             </h3>
-                            <div style={{ overflowX: 'auto', maxHeight: '250px' }}>
+                            <div className="doctor-table-container" style={{ overflowX: 'auto', maxHeight: '250px' }}>
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                                 <thead>
                                   <tr style={{ background: dark ? '#1e1c25' : '#faf8f5', borderBottom: `1px solid ${dark ? '#272530' : '#e8ddd0'}` }}>
@@ -946,7 +969,7 @@ export default function DoctorPanel() {
                   </div>
 
                   {/* Patients Table */}
-                  <div style={{ ...cardStyle(dark), overflow: 'hidden' }}>
+                  <div className="doctor-table-container" style={{ ...cardStyle(dark), overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ background: dark ? '#1e1c25' : '#faf8f5', borderBottom: `1px solid ${dark ? '#272530' : '#e8ddd0'}` }}>

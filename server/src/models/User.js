@@ -51,6 +51,11 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(500),
     allowNull: true,
   },
+  deviceToken: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    field: 'device_token',
+  },
 }, {
   tableName: 'users',
   timestamps: true,

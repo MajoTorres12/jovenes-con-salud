@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import api from '../services/api'
+import api, { getApiBaseUrl } from '../services/api'
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'
+const API_BASE = getApiBaseUrl()
 
 // ── Program badge colors ──────────────────────────────────────
 const PROGRAM_COLORS = {

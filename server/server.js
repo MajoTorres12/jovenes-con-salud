@@ -38,14 +38,16 @@ async function startServer() {
     console.warn('   Instala PostgreSQL y configura .env para habilitar la BD.')
   }
 
-  // Always start the HTTP server
-  app.listen(PORT, () => {
+  // Always start the HTTP server — listen on all interfaces (0.0.0.0)
+  // so Android devices on the same Wi-Fi can reach the backend.
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`
   ╔═══════════════════════════════════════════════╗
   ║                                               ║
   ║   🏥 API Jóvenes con Salud                    ║
   ║   🚀 Servidor corriendo en puerto ${PORT}        ║
   ║   📍 http://localhost:${PORT}/api/health         ║
+  ║   📱 Accesible desde la red local (0.0.0.0)   ║
   ║   🌿 Entorno: ${(process.env.NODE_ENV || 'development').padEnd(30)}║
   ║                                               ║
   ╚═══════════════════════════════════════════════╝

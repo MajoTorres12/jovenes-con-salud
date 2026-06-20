@@ -23,6 +23,10 @@ export default function Navbar() {
   const [langOpen, setLangOpen] = useState(false)
   const langRef = useRef(null)
 
+  // Mobile specific menu states
+  const [mobileMedsOpen, setMobileMedsOpen] = useState(false)
+  const [mobileAlertsOpen, setMobileAlertsOpen] = useState(false)
+
   const LANGUAGES = [
     { code: 'es', label: 'Español', flag: '🇪🇸' },
     { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -864,6 +868,13 @@ export default function Navbar() {
             display: 'flex',
             flexDirection: 'column',
             gap: '0.25rem',
+            background: dark ? 'var(--color-surface-100)' : '#fff',
+            borderTop: `1px solid ${dark ? '#272530' : '#e8ddd0'}`,
+            padding: '1rem',
+            boxShadow: 'var(--shadow-elevated)',
+            borderRadius: `0 0 var(--radius-lg) var(--radius-lg)`,
+            maxHeight: 'calc(100vh - 4.5rem)',
+            overflowY: 'auto',
           }}>
             {links.map(link => (
               <Link
@@ -901,6 +912,173 @@ export default function Navbar() {
                 >
                   <FaChartLine size={14} /> Mi Salud
                 </Link>
+
+                {/* Medication Reminders (Mobile Drawer Collapsible) */}
+                <button
+                  onClick={() => {
+                    setMobileMedsOpen(!mobileMedsOpen)
+                    setMobileAlertsOpen(false)
+                  }}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: 'none',
+                    background: mobileMedsOpen ? (dark ? 'var(--color-surface-200)' : 'var(--color-surface-50)') : 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    color: pendingMedsCount > 0 ? '#10b981' : 'var(--color-surface-600)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <FaPills size={14} /> Recordatorios
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {pendingMedsCount > 0 && (
+                      <span style={{
+                        background: '#10b981', color: 'white', fontSize: '0.7rem',
+                        fontWeight: '800', padding: '1px 5px', borderRadius: '10px'
+                      }}>
+                        {pendingMedsCount}
+                      </span>
+                    )}
+                    <FaChevronDown size={10} style={{ transform: mobileMedsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--color-surface-400)' }} />
+                  </span>
+                </button>
+
+                {mobileMedsOpen && (
+                  <div style={{
+                    background: dark ? 'rgba(0,0,0,0.15)' : 'var(--color-surface-50)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.5rem',
+                    marginLeft: '0.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                    borderLeft: '2px solid var(--color-surface-200)',
+                  }}>
+                    {todayDoses.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-surface-500)', margin: '0.5rem', textAlign: 'center' }}>
+                        No tienes medicamentos agendados.
+                      </p>
+                    ) : (
+                      todayDoses.map((doseItem, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem', borderBottom: idx < todayDoses.length - 1 ? `1px solid ${dark ? '#272530' : 'var(--color-surface-200)'}` : 'none' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--color-surface-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {doseItem.name}
+                              </span>
+                              <span style={{ padding: '1px 5px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: '800', color: 'white', background: '#3b82f6' }}>
+                                {doseItem.time}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '0.72rem', color: 'var(--color-surface-600)', margin: '2px 0 0' }}>Dosis: {doseItem.dose}</p>
+                          </div>
+                          <div style={{ marginLeft: '0.5rem' }}>
+                            {doseItem.isTaken ? (
+                              <span style={{ color: '#10b981', fontSize: '0.8rem' }}><FaCheck /></span>
+                            ) : (
+                              <button
+                                onClick={() => markDoseAsTaken(doseItem.medId, doseItem.time)}
+                                style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', background: '#10b981', color: 'white', border: 'none', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer' }}
+                              >
+                                Tomar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Health Alerts (Mobile Drawer Collapsible) */}
+                <button
+                  onClick={() => {
+                    const nextOpen = !mobileAlertsOpen
+                    setMobileAlertsOpen(nextOpen)
+                    setMobileMedsOpen(false)
+                    if (nextOpen) {
+                      const fetchedIds = alerts.map(a => a.id)
+                      setReadAlertIds(fetchedIds)
+                      localStorage.setItem('jcs_alerts_read_ids', JSON.stringify(fetchedIds))
+                      setUnreadCount(0)
+                    }
+                  }}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: 'none',
+                    background: mobileAlertsOpen ? (dark ? 'var(--color-surface-200)' : 'var(--color-surface-50)') : 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    color: unreadCount > 0 ? 'var(--color-primary-500)' : 'var(--color-surface-600)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <FaBell size={14} /> Alertas
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {unreadCount > 0 && (
+                      <span style={{
+                        background: '#dc2626', color: 'white', fontSize: '0.7rem',
+                        fontWeight: '800', padding: '1px 5px', borderRadius: '10px'
+                      }}>
+                        {unreadCount}
+                      </span>
+                    )}
+                    <FaChevronDown size={10} style={{ transform: mobileAlertsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--color-surface-400)' }} />
+                  </span>
+                </button>
+
+                {mobileAlertsOpen && (
+                  <div style={{
+                    background: dark ? 'rgba(0,0,0,0.15)' : 'var(--color-surface-50)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.5rem',
+                    marginLeft: '0.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                    borderLeft: '2px solid var(--color-surface-200)',
+                  }}>
+                    {alerts.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-surface-500)', margin: '0.5rem', textAlign: 'center' }}>
+                        No hay alertas recientes.
+                      </p>
+                    ) : (
+                      alerts.slice(0, 5).map((alertItem, idx) => {
+                        const isCritical = alertItem.severity === 'critical'
+                        return (
+                          <div key={alertItem.id} style={{ padding: '0.4rem', borderBottom: idx < alerts.slice(0, 5).length - 1 ? `1px solid ${dark ? '#272530' : 'var(--color-surface-200)'}` : 'none' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--color-surface-800)' }}>
+                                {alertItem.metricLabel}: {alertItem.value}
+                              </span>
+                              <span style={{
+                                padding: '1px 4px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: '700',
+                                color: isCritical ? 'var(--color-alert-crit-text)' : 'var(--color-alert-warn-text)',
+                                background: isCritical ? 'var(--color-alert-crit-bg)' : 'var(--color-alert-warn-bg)',
+                                border: `1px solid ${isCritical ? 'var(--color-alert-crit-border)' : 'var(--color-alert-warn-border)'}`
+                              }}>
+                                {isCritical ? 'Crítica' : 'Alerta'}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '0.72rem', color: 'var(--color-surface-600)', margin: '2px 0 0' }}>{alertItem.description}</p>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
 
                 {/* Admin link móvil */}
                 {user?.role === 'admin' && (

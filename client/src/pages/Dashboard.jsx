@@ -951,6 +951,7 @@ export default function Dashboard() {
         {/* Navigation Left Chevron */}
         <button
           onClick={() => setStartIndex(prev => Math.max(0, prev - 1))}
+          className="carousel-chevron"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -974,13 +975,16 @@ export default function Dashboard() {
         </button>
 
         {/* Carousel Grid showing 4 cards */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '1rem',
-          flex: 1,
-          minWidth: 0, // prevents grid blowout
-        }}>
+        <div 
+          className="dashboard-carousel-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '1rem',
+            flex: 1,
+            minWidth: 0, // prevents grid blowout
+          }}
+        >
           {TYPES.slice(startIndex, startIndex + 4).map((t) => {
             const latest = stats?.latest?.[t.key]
 
@@ -1042,7 +1046,7 @@ export default function Dashboard() {
                   transition: 'opacity 0.3s',
                 }} />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <p style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-surface-400)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                       {t.label}
@@ -1095,6 +1099,7 @@ export default function Dashboard() {
         {/* Navigation Right Chevron */}
         <button
           onClick={() => setStartIndex(prev => Math.min(TYPES.length - 4, prev + 1))}
+          className="carousel-chevron"
           style={{
             display: 'flex',
             alignItems: 'center',

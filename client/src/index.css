@@ -543,5 +543,136 @@ body {
   border-color: var(--color-surface-300) !important;
 }
 
+/* ========================================
+   Responsive Mobile Overrides
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* --- Dashboard Metric Cards (Carousel) --- */
+  .dashboard-carousel-grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 0.75rem !important;
+    padding: 0.25rem 0.5rem 0.75rem !important;
+    margin: 0 -0.5rem 1.25rem !important; /* bleed slightly to edges */
+    -webkit-overflow-scrolling: touch;
+  }
+  .dashboard-carousel-grid > div {
+    flex: 0 0 calc(100% - 1.5rem) !important; /* 1 card visible on mobile portrait */
+    scroll-snap-align: center !important;
+  }
+  
+  .carousel-chevron {
+    display: none !important;
+  }
+
+  /* --- Admin Panel Responsiveness --- */
+  .admin-layout {
+    flex-direction: column !important;
+  }
+
+  .admin-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -240px !important;
+    height: 100vh !important;
+    width: 240px !important;
+    z-index: 1000 !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.3) !important;
+  }
+
+  .admin-sidebar.open {
+    left: 0 !important;
+  }
+
+  .admin-header {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .admin-menu-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: none !important;
+    border: none !important;
+    color: var(--color-surface-700) !important;
+    font-size: 1.25rem !important;
+    cursor: pointer !important;
+    padding: 0.5rem !important;
+  }
+
+  /* --- Doctor Panel Responsiveness --- */
+  .doctor-layout {
+    flex-direction: column !important;
+  }
+
+  .doctor-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -240px !important;
+    height: 100vh !important;
+    width: 240px !important;
+    z-index: 1000 !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.3) !important;
+  }
+
+  .doctor-sidebar.open {
+    left: 0 !important;
+  }
+
+  .doctor-header {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .doctor-menu-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: none !important;
+    border: none !important;
+    color: var(--color-surface-700) !important;
+    font-size: 1.25rem !important;
+    cursor: pointer !important;
+    padding: 0.5rem !important;
+  }
+
+  /* --- Responsive Tables --- */
+  .admin-table-container,
+  .doctor-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-table-container table,
+  .doctor-table-container table {
+    min-width: 650px !important; /* prevent table cells from squishing */
+  }
+
+  /* --- General Spacing and Padding adjustments for mobile --- */
+  #dashboard-content {
+    padding: 1rem 0.75rem !important;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 1024px) {
+  .dashboard-carousel-grid > div {
+    flex: 0 0 calc(50% - 0.75rem) !important; /* 2 cards visible on tablets */
+  }
+}
+
+/* Sidebar overlay background */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+  animation: fadeIn 0.2s ease-out;
+}
+
+
 
 

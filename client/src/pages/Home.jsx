@@ -4,9 +4,9 @@ import { FaHeartbeat, FaBookMedical, FaHandsHelping, FaChartLine, FaTimes, FaNew
 import { HiArrowRight } from 'react-icons/hi'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import api from '../services/api'
+import api, { getApiBaseUrl } from '../services/api'
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'
+const API_BASE = getApiBaseUrl()
 const newsImgSrc = (p) => !p ? null : p.startsWith('http') ? p : `/${p}`
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 

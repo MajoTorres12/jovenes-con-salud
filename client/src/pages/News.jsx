@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FaNewspaper, FaThumbtack } from 'react-icons/fa'
-import api from '../services/api'
+import api, { getApiBaseUrl } from '../services/api'
 
-const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001'
+const API_BASE = getApiBaseUrl()
 const imgSrc = (p) => !p ? null : p.startsWith('http') ? p : `/${p}`
 
 const fmt = (d) => d ? new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : ''

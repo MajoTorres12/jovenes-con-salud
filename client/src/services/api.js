@@ -1,6 +1,34 @@
 import axios from 'axios'
+import { Capacitor } from '@capacitor/core'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+// IP de la computadora del desarrollador en la red Wi-Fi local.
+// Obtener con: ipconfig (Windows) / ifconfig (Mac/Linux)
+const LOCAL_NETWORK_IP = '192.168.1.128'
+const LOCAL_SERVER_PORT = '3001'
+
+/**
+ * Determina la URL base de la API automáticamente.
+ * - En dispositivo nativo (Android/iOS): usa la IP de la red local.
+ * - En navegador web: usa la variable de entorno o localhost.
+ */
+function getApiUrl() {
+  if (Capacitor.isNativePlatform()) {
+    return `http://${LOCAL_NETWORK_IP}:${LOCAL_SERVER_PORT}/api`
+  }
+  return import.meta.env.VITE_API_URL || `http://localhost:${LOCAL_SERVER_PORT}/api`
+}
+
+/**
+ * Retorna la URL base del servidor (sin /api), útil para cargar imágenes.
+ */
+export function getApiBaseUrl() {
+  if (Capacitor.isNativePlatform()) {
+    return `http://${LOCAL_NETWORK_IP}:${LOCAL_SERVER_PORT}`
+  }
+  return import.meta.env.VITE_API_URL?.replace('/api', '') || `http://localhost:${LOCAL_SERVER_PORT}`
+}
+
+const API_URL = getApiUrl()
 
 const api = axios.create({
   baseURL: API_URL,

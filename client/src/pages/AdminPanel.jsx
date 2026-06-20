@@ -10,6 +10,7 @@ import {
   FaEye, FaEyeSlash, FaThumbtack, FaSave, FaCamera, FaMapMarkerAlt,
   FaBookOpen,
 } from 'react-icons/fa'
+import { HiMenu } from 'react-icons/hi'
 
 // ═══════════════════════════════════════════════════════
 // STYLE CONSTANTS
@@ -44,22 +45,34 @@ export default function AdminPanel() {
   const { user, logout } = useAuth()
   const { dark } = useTheme()
   const [section, setSection] = useState('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: dark ? '#0c0b0f' : '#f1ede6' }}>
+    <div className="admin-layout" style={{ display: 'flex', minHeight: '100vh', background: dark ? '#0c0b0f' : '#f1ede6' }}>
+      {/* Sidebar overlay backdrop for mobile */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setSidebarOpen(false)} 
+        />
+      )}
+
       {/* ── Sidebar ─────────────────────── */}
-      <aside style={{
-        width: SIDEBAR_W,
-        background: SIDEBAR_BG,
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-        position: 'sticky',
-        top: 0,
-        height: '100vh',
-        overflowY: 'auto',
-        zIndex: 50,
-      }}>
+      <aside 
+        className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}
+        style={{
+          width: SIDEBAR_W,
+          background: SIDEBAR_BG,
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          overflowY: 'auto',
+          zIndex: 50,
+        }}
+      >
         {/* Brand */}
         <div style={{ padding: '1.5rem 1.25rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -76,7 +89,7 @@ export default function AdminPanel() {
           {NAV.map(n => (
             <button
               key={n.key}
-              onClick={() => setSection(n.key)}
+              onClick={() => { setSection(n.key); setSidebarOpen(false); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.65rem',
                 padding: '0.65rem 0.875rem', borderRadius: '10px',
@@ -109,15 +122,28 @@ export default function AdminPanel() {
       {/* ── Main Content ─────────────────── */}
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Top bar */}
-        <header style={{
-          padding: '1rem 2rem',
-          borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          background: dark ? '#141319' : '#fff',
-        }}>
-          <div>
-            <h1 style={{ fontSize: '1.35rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', margin: 0 }}>Panel de Administración</h1>
-            <p style={{ fontSize: '0.75rem', color: dark ? 'rgba(255,255,255,0.4)' : '#a89580', margin: 0 }}>Jóvenes con Salud — Instituto de la Juventud de Tamaulipas</p>
+        <header 
+          className="admin-header"
+          style={{
+            padding: '1rem 2rem',
+            borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: dark ? '#141319' : '#fff',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {/* Mobile Hamburger menu */}
+            <button 
+              className="admin-menu-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{ display: 'none' }}
+            >
+              <HiMenu />
+            </button>
+            <div>
+              <h1 style={{ fontSize: '1.35rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', margin: 0 }}>Panel de Administración</h1>
+              <p style={{ fontSize: '0.75rem', color: dark ? 'rgba(255,255,255,0.4)' : '#a89580', margin: 0 }}>Jóvenes con Salud — Instituto de la Juventud de Tamaulipas</p>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <select
@@ -612,7 +638,7 @@ function UsersSection({ dark }) {
         <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', margin: 0 }}>Gestión de Usuarios</h2>
         <SearchBar value={search} onChange={setSearch} placeholder="Buscar por nombre o correo..." dark={dark} />
       </div>
-      <div style={{ ...cardStyle(dark), overflow: 'hidden' }}>
+      <div className="admin-table-container" style={{ ...cardStyle(dark), overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ background: dark ? '#1e1c25' : '#faf8f5', borderBottom: `1px solid ${dark ? '#272530' : '#e8ddd0'}` }}>
@@ -899,7 +925,7 @@ function CrudSection({ dark, entity, title }) {
         </div>
       </div>
 
-      <div style={{ ...cardStyle(dark), overflow: 'hidden' }}>
+      <div className="admin-table-container" style={{ ...cardStyle(dark), overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ background: dark ? '#1e1c25' : '#faf8f5', borderBottom: `1px solid ${dark ? '#272530' : '#e8ddd0'}` }}>
@@ -1043,7 +1069,7 @@ function MessagesSection({ dark }) {
   return (
     <div>
       <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: dark ? '#fff' : '#1a1715', marginBottom: '1.5rem' }}>Mensajes de Contacto</h2>
-      <div style={{ ...cardStyle(dark), overflow: 'hidden' }}>
+      <div className="admin-table-container" style={{ ...cardStyle(dark), overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ background: dark ? '#1e1c25' : '#faf8f5', borderBottom: `1px solid ${dark ? '#272530' : '#e8ddd0'}` }}>

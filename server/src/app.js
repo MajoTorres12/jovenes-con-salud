@@ -23,6 +23,7 @@ import nutraceuticalRoutes from './routes/nutraceutical.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import doctorRoutes from './routes/doctor.routes.js'
 import chatRoutes from './routes/chat.routes.js'
+import notificationRoutes from './routes/notification.routes.js'
 import ContactSettings from './models/ContactSettings.js'
 
 const app = express()
@@ -41,7 +42,9 @@ app.use('/images', express.static('public/images'))
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.NODE_ENV === 'production'
+    ? (process.env.CLIENT_URL || 'http://localhost:5173')
+    : true,
   credentials: true,
 }))
 
@@ -91,6 +94,7 @@ app.use('/api/nutraceuticals', nutraceuticalRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/doctor', doctorRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/notifications', notificationRoutes)
 
 // ========================================
 // Error handling
