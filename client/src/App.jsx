@@ -12,6 +12,7 @@ import Contact from './pages/Contact'
 import FAQ from './pages/FAQ'
 import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
+import AdvancedAnalytics from './pages/AdvancedAnalytics'
 import BMICalculator from './pages/BMICalculator'
 import News from './pages/News'
 import NewsDetail from './pages/NewsDetail'
@@ -43,6 +44,11 @@ export default function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <AdvancedAnalytics />
               </ProtectedRoute>
             } />
             <Route path="/perfil" element={

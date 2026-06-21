@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/auth.middleware.js'
 import User from '../models/User.js'
 import MedicalAlert from '../models/MedicalAlert.js'
 import { checkHealthLimits } from '../utils/healthLimits.js'
+import { calculateStreaks } from '../utils/streakUtils.js'
 
 const router = Router()
 
@@ -141,6 +142,24 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     console.error('Error obteniendo estadísticas:', error)
     res.status(500).json({ error: 'Error al obtener estadísticas' })
+  }
+})
+
+// GET /api/health-tracking/streaks — get active streaks for the user
+router.get('/streaks', async (req, res) => {
+  try {
+    const userId = req.user.id
+    const records = await HealthRecord.findAll({
+      attributes: ['recordedAt'],
+      where: { userId, familyMemberId: null },
+      order: [['recordedAt', 'DESC']],
+      raw: true
+    })
+    const streaks = calculateStreaks(records)
+    res.json(streaks)
+  } catch (error) {
+    console.error('Error obteniendo rachas de salud:', error)
+    res.status(500).json({ error: 'Error al obtener las rachas de salud' })
   }
 })
 

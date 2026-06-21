@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
+import { Filesystem, Directory } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import {
   FaWeight, FaTint, FaHeartbeat, FaRunning, FaPlus, FaTimes, FaChartLine, FaFilePdf,
   FaUsers, FaArrowLeft, FaUserFriends, FaFilter, FaCalendarAlt,
@@ -78,6 +82,15 @@ export default function Dashboard() {
   const [showDateFilter, setShowDateFilter] = useState(false)
   const hasDateFilter = filterFrom || filterTo
   const clearDateFilter = () => { setFilterFrom(''); setFilterTo('') }
+  const [streaks, setStreaks] = useState(null)
+  const [showStreakModal, setShowStreakModal] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // ── Family integration state ──────────────────────
   const [familyMembers, setFamilyMembers] = useState([])
@@ -480,19 +493,35 @@ export default function Dashboard() {
         pdf.text(`Página ${p} de ${totalPages}`, pageW - margin, pageH - 4, { align: 'right' })
       }
 
-      // Force download with .pdf extension via blob anchor
-      const blob = pdf.output('blob')
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
+      // Force download with .pdf extension
       const pdfName = isViewingFamily && selectedMember
         ? `Reporte_Salud_${selectedMember.name?.split(' ')[0]}_${new Date().toISOString().split('T')[0]}.pdf`
         : `Reporte_Salud_${new Date().toISOString().split('T')[0]}.pdf`
-      a.download = pdfName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+
+      if (Capacitor.isNativePlatform()) {
+        const base64Data = pdf.output('datauristring').split(',')[1]
+        const result = await Filesystem.writeFile({
+          path: pdfName,
+          data: base64Data,
+          directory: Directory.Cache,
+        })
+        await Share.share({
+          title: 'Reporte de Salud',
+          text: 'Tu reporte de salud generado por la plataforma Jóvenes con Salud.',
+          url: result.uri,
+          dialogTitle: 'Abrir/Compartir Reporte',
+        })
+      } else {
+        const blob = pdf.output('blob')
+        const blobUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = pdfName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+      }
     } catch (e) {
       console.error('Error exportando PDF:', e)
       alert(`Error al generar el PDF:\n${e.message}\n\nStack: ${e.stack?.split('\n').slice(0, 3).join('\n')}`)
@@ -527,20 +556,23 @@ export default function Dashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      let statsRes, recordsRes
+      let statsRes, recordsRes, streaksRes
       if (selectedFamilyId) {
-        [statsRes, recordsRes] = await Promise.all([
+        [statsRes, recordsRes, streaksRes] = await Promise.all([
           api.get(`/family/${selectedFamilyId}/health/stats`),
           api.get(`/family/${selectedFamilyId}/health`, { params: { limit: 100 } }),
+          api.get(`/family/${selectedFamilyId}/health/streaks`),
         ])
       } else {
-        [statsRes, recordsRes] = await Promise.all([
+        [statsRes, recordsRes, streaksRes] = await Promise.all([
           api.get('/health-tracking/stats'),
           api.get('/health-tracking/records', { params: { limit: 100 } }),
+          api.get('/health-tracking/streaks'),
         ])
       }
       setStats(statsRes.data)
       setRecords(recordsRes.data.records)
+      setStreaks(streaksRes.data)
     } catch (err) {
       console.error('Error fetching data:', err)
     } finally {
@@ -667,7 +699,7 @@ export default function Dashboard() {
             <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--color-surface-900)' }}>
               Hola, {user?.name?.split(' ')[0]} 👋
             </h1>
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-surface-500)' }}>
+            <p style={{ fontSize: '0.85rem', color: dark ? '#ffffff' : 'var(--color-surface-500)' }}>
               Tu panel de seguimiento de salud personalizado
             </p>
           </div>
@@ -675,6 +707,40 @@ export default function Dashboard() {
 
         {/* ── Action buttons header group ─────────────────────── */}
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }} data-html2canvas-ignore="true">
+          {streaks && (
+            <button
+              onClick={() => setShowStreakModal(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.6rem 1.25rem', borderRadius: '10px',
+                border: 'none',
+                background: streaks.daily.current > 0 
+                  ? 'linear-gradient(135deg, #f97316, #ef4444)' 
+                  : 'linear-gradient(135deg, var(--color-surface-400), var(--color-surface-500))',
+                color: 'white', fontSize: '0.85rem', fontWeight: '600',
+                cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.2s',
+              }}
+            >
+              <span style={{ fontSize: '1rem', marginRight: '0.1rem' }}>🔥</span>
+              Racha {streaks.daily.current > 0 ? `(${streaks.daily.current})` : '(0)'}
+            </button>
+          )}
+
+          <Link
+            to={`/analytics${selectedFamilyId ? `?familyMemberId=${selectedFamilyId}` : ''}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.6rem 1.25rem', borderRadius: '10px',
+              border: 'none', background: 'linear-gradient(135deg, var(--color-primary-500), var(--color-primary-800))',
+              color: 'white', fontSize: '0.85rem', fontWeight: '600',
+              cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
+              textDecoration: 'none', transition: 'all 0.2s',
+            }}
+          >
+            <FaChartLine style={{ color: 'white' }} />
+            Estadísticas Avanzadas
+          </Link>
 
           <div ref={pdfMenuRef} style={{ position: 'relative' }}>
             <button
@@ -704,7 +770,7 @@ export default function Dashboard() {
               }}>
                 {/* Quick options */}
                 <div style={{ padding: '0.6rem 0.5rem', borderBottom: '1px solid var(--color-surface-200)' }}>
-                  <p style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.2rem 0.75rem 0.5rem' }}>Rango rápido</p>
+                  <p style={{ fontSize: '0.68rem', fontWeight: '700', color: dark ? '#ffffff' : 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.2rem 0.75rem 0.5rem' }}>Rango rápido</p>
                   {[
                     { label: '📅  Último mes', months: 1 },
                     { label: '📅  Últimos 3 meses', months: 3 },
@@ -752,7 +818,7 @@ export default function Dashboard() {
                   {showCustomPicker && (
                     <div style={{ padding: '0.75rem 0.5rem 0.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                       <div>
-                        <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.3rem' }}>Desde</label>
+                        <label style={{ fontSize: '0.72rem', fontWeight: '700', color: dark ? '#ffffff' : 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.3rem' }}>Desde</label>
                         <input
                           type="date"
                           value={customFrom}
@@ -762,7 +828,7 @@ export default function Dashboard() {
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.3rem' }}>Hasta</label>
+                        <label style={{ fontSize: '0.72rem', fontWeight: '700', color: dark ? '#ffffff' : 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.3rem' }}>Hasta</label>
                         <input
                           type="date"
                           value={customTo}
@@ -798,6 +864,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+
+
       {/* ── Family Profile Selector Bar ─────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -816,7 +884,7 @@ export default function Dashboard() {
             background: !isViewingFamily
               ? 'linear-gradient(135deg, var(--color-success), #047857)'
               : 'transparent',
-            color: !isViewingFamily ? 'white' : 'var(--color-surface-500)',
+            color: !isViewingFamily ? 'white' : (dark ? '#ffffff' : 'var(--color-surface-500)'),
             fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer',
             transition: 'all 0.2s', whiteSpace: 'nowrap',
             boxShadow: !isViewingFamily ? '0 2px 8px rgba(16,185,129,0.3)' : 'none',
@@ -839,7 +907,7 @@ export default function Dashboard() {
               background: selectedFamilyId === m.id
                 ? 'linear-gradient(135deg, var(--color-primary-500), var(--color-primary-800))'
                 : 'transparent',
-              color: selectedFamilyId === m.id ? 'white' : 'var(--color-surface-500)',
+              color: selectedFamilyId === m.id ? 'white' : (dark ? '#ffffff' : 'var(--color-surface-500)'),
               fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer',
               transition: 'all 0.2s', whiteSpace: 'nowrap',
               boxShadow: selectedFamilyId === m.id ? '0 2px 8px rgba(135,18,51,0.3)' : 'none',
@@ -870,12 +938,12 @@ export default function Dashboard() {
             style={{
               display: 'flex', alignItems: 'center', gap: '0.35rem',
               padding: '0.55rem 1rem', borderRadius: '10px',
-              border: '2px dashed var(--color-surface-300)', background: 'transparent',
-              color: 'var(--color-surface-400)', fontSize: '0.78rem', fontWeight: '700',
+              border: dark ? '2px dashed rgba(255, 255, 255, 0.4)' : '2px dashed var(--color-surface-300)', background: 'transparent',
+              color: dark ? '#ffffff' : 'var(--color-surface-400)', fontSize: '0.78rem', fontWeight: '700',
               cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
             }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary-500)'; e.currentTarget.style.color = 'var(--color-primary-500)' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-surface-300)'; e.currentTarget.style.color = 'var(--color-surface-400)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = dark ? 'rgba(255, 255, 255, 0.4)' : 'var(--color-surface-300)'; e.currentTarget.style.color = dark ? '#ffffff' : 'var(--color-surface-400)' }}
           >
             <FaPlus size={10} />
             Agregar
@@ -916,7 +984,7 @@ export default function Dashboard() {
                   Familiar
                 </span>
               </div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--color-surface-500)', marginTop: '0.15rem' }}>
+              <p style={{ fontSize: '0.78rem', color: dark ? '#ffffff' : 'var(--color-surface-500)', marginTop: '0.15rem' }}>
                 {RELATIONSHIP_LABELS[selectedMember.relationship] || selectedMember.relationship}
                 {' · Viendo datos de salud de este familiar'}
               </p>
@@ -985,7 +1053,7 @@ export default function Dashboard() {
             minWidth: 0, // prevents grid blowout
           }}
         >
-          {TYPES.slice(startIndex, startIndex + 4).map((t) => {
+          {(isMobile ? TYPES : TYPES.slice(startIndex, startIndex + 4)).map((t) => {
             const latest = stats?.latest?.[t.key]
 
             // ── BMI for weight card ──────────────────────
@@ -1048,12 +1116,12 @@ export default function Dashboard() {
 
                 <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <p style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-surface-400)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: '600', color: dark ? '#ffffff' : 'var(--color-surface-500)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                       {t.label}
                     </p>
-                    <p style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-surface-900)' }}>
+                    <p style={{ fontSize: '1.75rem', fontWeight: '800', color: dark ? '#ffffff' : 'var(--color-surface-900)' }}>
                       {formatLatest(latest)}
-                      <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--color-surface-400)', marginLeft: '0.25rem' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: '500', color: dark ? '#ffffff' : 'var(--color-surface-400)', marginLeft: '0.25rem' }}>
                         {latest ? t.unit : ''}
                       </span>
                     </p>
@@ -1071,7 +1139,7 @@ export default function Dashboard() {
                           {indicatorLabel}
                         </span>
                         {indicatorDescription && (
-                          <span style={{ fontSize: '0.68rem', color: 'var(--color-surface-400)', fontStyle: 'italic' }}>
+                          <span style={{ fontSize: '0.68rem', color: dark ? '#ffffff' : 'var(--color-surface-400)', fontStyle: 'italic' }}>
                             {indicatorDescription}
                           </span>
                         )}
@@ -1087,7 +1155,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {latest && (
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-surface-400)', marginTop: '0.5rem' }}>
+                  <p style={{ fontSize: '0.75rem', color: dark ? '#ffffff' : 'var(--color-surface-400)', marginTop: '0.5rem' }}>
                     {new Date(latest.recordedAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 )}
@@ -1145,7 +1213,7 @@ export default function Dashboard() {
                 {' · '}{chartData.length} registros
               </p>
             ) : (
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-surface-400)' }}>
+              <p style={{ fontSize: '0.8rem', color: dark ? '#ffffff' : 'var(--color-surface-400)' }}>
                 Últimos {chartData.length} registros
               </p>
             )}
@@ -1302,7 +1370,7 @@ export default function Dashboard() {
           <div style={{
             height: '280px', display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
-            color: 'var(--color-surface-400)',
+            color: dark ? '#ffffff' : 'var(--color-surface-400)',
           }}>
             <activeTypeInfo.icon style={{ fontSize: '2.5rem', opacity: 0.3 }} />
             <p style={{ fontSize: '0.95rem' }}>Aún no tienes registros de {activeTypeInfo.label.toLowerCase()}</p>
@@ -1350,7 +1418,7 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <t.icon style={{ color: t.color, fontSize: '1rem' }} />
                   <span style={{ fontWeight: '700', color: 'var(--color-surface-800)', fontSize: '0.95rem' }}>{t.label}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-surface-400)' }}>({t.unit})</span>
+                  <span style={{ fontSize: '0.75rem', color: dark ? '#ffffff' : 'var(--color-surface-400)' }}>({t.unit})</span>
                 </div>
                 <span style={{
                   padding: '0.15rem 0.65rem', borderRadius: '2rem',
@@ -1371,10 +1439,10 @@ export default function Dashboard() {
                   transition: 'background 0.15s',
                 }}>
                   <div style={{ flex: '0 0 140px' }}>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--color-surface-700)', fontWeight: '500' }}>
+                    <p style={{ fontSize: '0.82rem', color: dark ? '#ffffff' : 'var(--color-surface-700)', fontWeight: '500' }}>
                       {new Date(r.recordedAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--color-surface-400)' }}>
+                    <p style={{ fontSize: '0.72rem', color: dark ? '#ffffff' : 'var(--color-surface-400)' }}>
                       {new Date(r.recordedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -1382,15 +1450,15 @@ export default function Dashboard() {
                     <span style={{ fontWeight: '800', color: t.color, fontSize: '1.05rem' }}>
                       {r.type === 'bloodPressure' ? `${r.value}/${r.value2}` : r.value}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-surface-400)', marginLeft: '0.2rem' }}>{t.unit}</span>
+                    <span style={{ fontSize: '0.75rem', color: dark ? '#ffffff' : 'var(--color-surface-400)', marginLeft: '0.2rem' }}>{t.unit}</span>
                     {r.source === 'wearable' && (
                       <span className="record-wearable-badge" title="Sincronizado desde dispositivo wearable">
                         ⌚ Wearable
                       </span>
                     )}
                   </div>
-                  <p style={{ flex: 1, fontSize: '0.82rem', color: 'var(--color-surface-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.notes || <span style={{ color: 'var(--color-surface-300)' }}>Sin notas</span>}
+                  <p style={{ flex: 1, fontSize: '0.82rem', color: dark ? '#ffffff' : 'var(--color-surface-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.notes || <span style={{ color: dark ? 'rgba(255, 255, 255, 0.4)' : 'var(--color-surface-300)' }}>Sin notas</span>}
                   </p>
                   <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
                     <button title="Editar"
@@ -1399,9 +1467,9 @@ export default function Dashboard() {
                         setFormData({ type: r.type, value: r.value, value2: r.value2 || '', heightCm: r.type === 'weight' ? (String(r.value2 || '') || savedHeight) : '', notes: r.notes || '', recordedAt: new Date(r.recordedAt).toISOString().slice(0, 16) })
                         setShowModal(true)
                       }}
-                      style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', border: '1.5px solid var(--color-surface-200)', background: 'white', color: 'var(--color-surface-500)', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.15s' }}
+                      style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', border: dark ? '1.5px solid var(--color-surface-300)' : '1.5px solid var(--color-surface-200)', background: dark ? 'var(--color-surface-200)' : 'white', color: dark ? '#ffffff' : 'var(--color-surface-500)', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.15s' }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = t.color; e.currentTarget.style.color = t.color }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-surface-200)'; e.currentTarget.style.color = 'var(--color-surface-500)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = dark ? 'var(--color-surface-300)' : 'var(--color-surface-200)'; e.currentTarget.style.color = dark ? '#ffffff' : 'var(--color-surface-500)' }}
                     >✏️</button>
                     <button title="Eliminar"
                       onClick={async () => {
@@ -1416,9 +1484,9 @@ export default function Dashboard() {
                         }
                         catch { alert('Error al eliminar el registro') }
                       }}
-                      style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', border: '1.5px solid #fecaca', background: 'white', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'white' }}
+                      style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', border: dark ? '1.5px solid #5c0817' : '1.5px solid #fecaca', background: dark ? 'var(--color-surface-200)' : 'white', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = dark ? '#29030a' : '#fef2f2' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = dark ? 'var(--color-surface-200)' : 'white' }}
                     >🗑️</button>
                   </div>
                 </div>
@@ -1644,6 +1712,251 @@ export default function Dashboard() {
                 )}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Streak Modal ────────────────────────────────────── */}
+      {showStreakModal && streaks && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '1rem',
+        }}>
+          <div className="animate-fade-in-up" style={{
+            width: '100%', maxWidth: '600px',
+            borderRadius: 'var(--radius-2xl)',
+            background: dark ? 'var(--color-surface-100)' : 'white',
+            border: `1px solid ${dark ? 'var(--color-surface-300)' : '#e2e8f0'}`,
+            boxShadow: 'var(--shadow-elevated)',
+            overflow: 'hidden',
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: `1px solid ${dark ? 'var(--color-surface-300)' : '#f1f5f9'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: dark ? 'rgba(0, 0, 0, 0.2)' : '#fafafa',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  background: streaks.daily.current > 0 ? 'linear-gradient(135deg, #f97316, #ef4444)' : (dark ? 'var(--color-surface-200)' : '#e2e8f0'),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: streaks.daily.current > 0 ? '0 0 10px rgba(249,115,22,0.35)' : 'none',
+                }}>
+                  <span style={{ fontSize: '1rem' }}>🔥</span>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: dark ? '#ffffff' : 'var(--color-surface-900)' }}>
+                    Rachas de Salud
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: dark ? '#9ea4b0' : 'var(--color-surface-500)', margin: 0 }}>
+                    Tu historial de consistencia en registros
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowStreakModal(false)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: dark ? 'rgba(255,255,255,0.6)' : 'var(--color-surface-400)',
+                  fontSize: '1.25rem', padding: '0.25rem'
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Daily Streak Status */}
+              <div style={{
+                padding: '1.25rem',
+                borderRadius: 'var(--radius-xl)',
+                background: streaks.daily.current > 0 ? 'rgba(249, 115, 22, 0.08)' : (dark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0,0,0,0.02)'),
+                border: streaks.daily.current > 0 ? '1px solid rgba(249, 115, 22, 0.2)' : `1px solid ${dark ? 'var(--color-surface-300)' : '#e2e8f0'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1rem',
+              }}>
+                <div>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: '800', color: dark ? '#ffffff' : 'var(--color-surface-900)' }}>
+                    {streaks.daily.current > 0 
+                      ? `¡Tienes una Racha Activa de ${streaks.daily.current} ${streaks.daily.current === 1 ? 'día' : 'días'}!` 
+                      : '¡Comienza tu racha de registros hoy!'}
+                  </h4>
+                  <p style={{ fontSize: '0.78rem', color: dark ? '#9ea4b0' : 'var(--color-surface-500)', marginTop: '0.2rem', margin: 0 }}>
+                    {streaks.daily.current > 0 
+                      ? 'Mantén encendido el fuego registrando tus datos diariamente.' 
+                      : 'Registra cualquier medición hoy para iniciar tu racha.'}
+                  </p>
+                </div>
+
+                {/* Week Bubbles Calendar */}
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((dayName, idx) => {
+                    const isActive = streaks.currentWeekDays[idx];
+                    return (
+                      <div 
+                        key={idx}
+                        title={isActive ? `Registro completado este ${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}` : `Sin registros este ${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][idx]}`}
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          background: isActive 
+                            ? 'linear-gradient(135deg, var(--color-primary-500), var(--color-primary-800))'
+                            : (dark ? 'var(--color-surface-300)' : '#f1f5f9'),
+                          color: isActive ? 'white' : (dark ? 'rgba(255, 255, 255, 0.4)' : 'var(--color-surface-400)'),
+                          border: isActive 
+                            ? 'none' 
+                            : `1.5px solid ${dark ? 'var(--color-surface-400)' : '#e2e8f0'}`,
+                          boxShadow: isActive ? '0 2px 6px rgba(135,18,51,0.3)' : 'none',
+                        }}
+                      >
+                        {dayName}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Statistics Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '1rem',
+              }}>
+                {/* Daily Streak Card */}
+                <div style={{
+                  padding: '1.25rem',
+                  borderRadius: 'var(--radius-xl)',
+                  background: dark ? 'var(--color-surface-200)' : '#fafafa',
+                  border: `1px solid ${dark ? 'var(--color-surface-300)' : '#e2e8f0'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                }}>
+                  <span style={{ fontSize: '2rem' }}>📅</span>
+                  <div>
+                    <h4 style={{ fontSize: '0.72rem', fontWeight: '800', color: dark ? '#9ea4b0' : 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Racha Diaria
+                    </h4>
+                    <p style={{ fontSize: '1.35rem', fontWeight: '800', color: dark ? '#ffffff' : 'var(--color-surface-900)', margin: '0.1rem 0 0.15rem' }}>
+                      {streaks.daily.current} {streaks.daily.current === 1 ? 'Día' : 'Días'}
+                    </p>
+                    <p style={{ fontSize: '0.68rem', color: dark ? '#7e7a8c' : 'var(--color-surface-400)', margin: 0 }}>
+                      Máximo histórico: {streaks.daily.max}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Weekly Streak Card */}
+                <div style={{
+                  padding: '1.25rem',
+                  borderRadius: 'var(--radius-xl)',
+                  background: dark ? 'var(--color-surface-200)' : '#fafafa',
+                  border: `1px solid ${dark ? 'var(--color-surface-300)' : '#e2e8f0'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                }}>
+                  <span style={{ fontSize: '2rem' }}>🗓️</span>
+                  <div>
+                    <h4 style={{ fontSize: '0.72rem', fontWeight: '800', color: dark ? '#9ea4b0' : 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Racha Semanal
+                    </h4>
+                    <p style={{ fontSize: '1.35rem', fontWeight: '800', color: dark ? '#ffffff' : 'var(--color-surface-900)', margin: '0.1rem 0 0.15rem' }}>
+                      {streaks.weekly.current} {streaks.weekly.current === 1 ? 'Semana' : 'Semanas'}
+                    </p>
+                    <p style={{ fontSize: '0.68rem', color: dark ? '#7e7a8c' : 'var(--color-surface-400)', margin: 0 }}>
+                      Máximo histórico: {streaks.weekly.max}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Monthly Streak Card */}
+                <div style={{
+                  padding: '1.25rem',
+                  borderRadius: 'var(--radius-xl)',
+                  background: dark ? 'var(--color-surface-200)' : '#fafafa',
+                  border: `1px solid ${dark ? 'var(--color-surface-300)' : '#e2e8f0'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                }}>
+                  <span style={{ fontSize: '2rem' }}>✨</span>
+                  <div>
+                    <h4 style={{ fontSize: '0.72rem', fontWeight: '800', color: dark ? '#9ea4b0' : 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Racha Mensual
+                    </h4>
+                    <p style={{ fontSize: '1.35rem', fontWeight: '800', color: dark ? '#ffffff' : 'var(--color-surface-900)', margin: '0.1rem 0 0.15rem' }}>
+                      {streaks.monthly.current} {streaks.monthly.current === 1 ? 'Mes' : 'Meses'}
+                    </p>
+                    <p style={{ fontSize: '0.68rem', color: dark ? '#7e7a8c' : 'var(--color-surface-400)', margin: 0 }}>
+                      Máximo histórico: {streaks.monthly.max}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Yearly Streak Card */}
+                <div style={{
+                  padding: '1.25rem',
+                  borderRadius: 'var(--radius-xl)',
+                  background: dark ? 'var(--color-surface-200)' : '#fafafa',
+                  border: `1px solid ${dark ? 'var(--color-surface-300)' : '#e2e8f0'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                }}>
+                  <span style={{ fontSize: '2rem' }}>🏆</span>
+                  <div>
+                    <h4 style={{ fontSize: '0.72rem', fontWeight: '800', color: dark ? '#9ea4b0' : 'var(--color-surface-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Racha Anual
+                    </h4>
+                    <p style={{ fontSize: '1.35rem', fontWeight: '800', color: dark ? '#ffffff' : 'var(--color-surface-900)', margin: '0.1rem 0 0.15rem' }}>
+                      {streaks.yearly.current} {streaks.yearly.current === 1 ? 'Año' : 'Años'}
+                    </p>
+                    <p style={{ fontSize: '0.68rem', color: dark ? '#7e7a8c' : 'var(--color-surface-400)', margin: 0 }}>
+                      Máximo histórico: {streaks.yearly.max}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Motivational message */}
+              <div style={{
+                padding: '1rem 1.25rem',
+                borderRadius: 'var(--radius-xl)',
+                background: dark ? 'rgba(224, 59, 96, 0.12)' : 'var(--color-primary-50)',
+                borderLeft: '4px solid var(--color-primary-500)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}>
+                <span style={{ fontSize: '1.3rem' }}>🎯</span>
+                <p style={{ fontSize: '0.82rem', color: dark ? '#ffffff' : 'var(--color-primary-900)', fontWeight: '600', margin: 0, lineHeight: '1.4' }}>
+                  {streaks.daily.current >= 7 
+                    ? '¡Nivel Leyenda! Estás demostrando una constancia increíble con tu salud. ¡Sigue así!'
+                    : streaks.daily.current >= 3
+                      ? '¡Excelente ritmo! Estás creando el hábito perfecto de monitorear tu salud.'
+                      : streaks.daily.current > 0
+                        ? '¡Buen comienzo! Registra tu salud mañana también para mantener el fuego activo.'
+                        : 'El primer paso es registrar una medición hoy. ¡Tu salud te lo agradecerá!'}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

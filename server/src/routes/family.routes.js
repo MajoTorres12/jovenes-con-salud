@@ -6,6 +6,7 @@ import { authenticate } from '../middleware/auth.middleware.js'
 import User from '../models/User.js'
 import MedicalAlert from '../models/MedicalAlert.js'
 import { checkHealthLimits } from '../utils/healthLimits.js'
+import { calculateStreaks } from '../utils/streakUtils.js'
 
 const router = Router()
 
@@ -279,6 +280,32 @@ router.get('/:memberId/health/stats', async (req, res, next) => {
     const totalRecords = await HealthRecord.count({ where: { familyMemberId: memberId } })
 
     res.json({ latest, totalRecords })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/family/:memberId/health/streaks — Get active streaks for a family member
+router.get('/:memberId/health/streaks', async (req, res, next) => {
+  try {
+    const { memberId } = req.params
+
+    const member = await FamilyMember.findOne({
+      where: { id: memberId, userId: req.user.id }
+    })
+    if (!member) {
+      return res.status(404).json({ error: 'Familiar no encontrado' })
+    }
+
+    const records = await HealthRecord.findAll({
+      attributes: ['recordedAt'],
+      where: { familyMemberId: memberId },
+      order: [['recordedAt', 'DESC']],
+      raw: true
+    })
+    
+    const streaks = calculateStreaks(records)
+    res.json(streaks)
   } catch (err) {
     next(err)
   }

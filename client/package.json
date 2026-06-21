@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",
+    "@capacitor/filesystem": "^8.1.2",
     "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/share": "^8.0.1",
     "@tailwindcss/vite": "^4.2.2",
     "axios": "^1.13.6",
     "html2canvas": "^1.4.1",

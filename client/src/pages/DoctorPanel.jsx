@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import api from '../services/api'
+import AdvancedAnalytics from './AdvancedAnalytics'
 import {
   FaHeartbeat, FaUsers, FaChartLine, FaArrowLeft, FaTimes, FaBell,
   FaCapsules, FaStethoscope, FaEnvelope, FaExclamationTriangle,
@@ -542,11 +543,30 @@ export default function DoctorPanel() {
                       {m.name} ({m.relationship ? (m.relationship.charAt(0).toUpperCase() + m.relationship.slice(1)) : 'Familiar'})
                     </button>
                   ))}
+                  <button
+                    onClick={() => setActivePatientTab('analytics')}
+                    style={{
+                      padding: '0.6rem 1.2rem', border: 'none', background: 'none', cursor: 'pointer',
+                      fontSize: '0.85rem', fontWeight: '700', whiteSpace: 'nowrap',
+                      color: activePatientTab === 'analytics' ? (dark ? '#38bdf8' : '#0369a1') : (dark ? '#7e7a8c' : '#a89580'),
+                      borderBottom: activePatientTab === 'analytics' ? `3px solid ${dark ? '#38bdf8' : '#0369a1'}` : '3px solid transparent',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Estadísticas y Predicciones
+                  </button>
                 </div>
 
                 {/* Active Tab Container */}
                 <div>
-                  {activePatientTab === 'main' ? (
+                  {activePatientTab === 'analytics' ? (
+                    <AdvancedAnalytics
+                      propUserId={selectedPatientId}
+                      propFamilyMemberId={null}
+                      familyMembers={patientDetail.familyMembers}
+                      isDoctorView={true}
+                    />
+                  ) : activePatientTab === 'main' ? (
                     /* Main patient records */
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       {/* Grid cards metrics */}

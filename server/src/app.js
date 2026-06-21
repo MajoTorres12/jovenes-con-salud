@@ -24,6 +24,7 @@ import adminRoutes from './routes/admin.routes.js'
 import doctorRoutes from './routes/doctor.routes.js'
 import chatRoutes from './routes/chat.routes.js'
 import notificationRoutes from './routes/notification.routes.js'
+import analyticsRoutes from './routes/analytics.routes.js'
 import ContactSettings from './models/ContactSettings.js'
 
 const app = express()
@@ -95,6 +96,7 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/doctor', doctorRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/notifications', notificationRoutes)
+app.use('/api/analytics', analyticsRoutes)
 
 // ========================================
 // Error handling
