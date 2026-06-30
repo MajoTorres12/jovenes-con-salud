@@ -524,6 +524,32 @@ export default function DoctorPanel() {
                       </p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => setActivePatientTab('analytics')}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.6rem 1.25rem',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #0369a1, #38bdf8)',
+                      color: 'white',
+                      fontSize: '0.82rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(3, 105, 161, 0.3)',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(3, 105, 161, 0.4)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(3, 105, 161, 0.3)'
+                    }}
+                  >
+                    <FaChartLine size={14} /> Estadísticas Avanzadas
+                  </button>
                 </div>
 
                 {/* Sub-tabs: Principal Patient and Family Members */}
